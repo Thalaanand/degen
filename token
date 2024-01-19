@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract LaptopSubscription is ERC20, Ownable(msg.sender) {
+    enum LaptopModel { HP, DELL, MAC, ASUS }
+
+    event SubscriptionRedeemed(address indexed account, LaptopModel laptopModel, uint256 subscriptionCost);
+    event TokensBurned(address indexed account, uint256 amount);
+    event LaptopModelModified(address indexed account, LaptopModel newModel);
+
+    mapping(address => LaptopModel) public userLaptops;
+
+    uint256 public constant HPCost = 200;
+    uint256 public constant DellCost = 180;
+    uint256 public constant MacCost = 250;
+    uint256 public constant AsusCost = 300;
+
+    constructor() ERC20("Degen", "DGN") {}
+
+    // Mint tokens to the specified address
+    function mintTokens(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+
+    // Burn a specific amount of tokens
+    function burn(uint256 amount) public {
+        require(amount > 0, "Amount to burn must be greater than zero");
+        require(balanceOf(msg.sender) >= amount, "Insufficient funds for token burn");
+
+        // Burn the tokens
+        _burn(msg.sender, amount);
+
+        // Emit the burn event
+        emit TokensBurned(msg.sender, amount);
+    }
+
+    // Redeem a laptop based on the specified model number
+    function redeemLaptop(uint8 modelNumber) public {
+        require(modelNumber >= 1 && modelNumber <= 4, "Invalid model number");
+
+        LaptopModel laptopModel;
+        uint256 modelCost;
+
+        // Determine the laptop model and cost based on the model number
+        if (modelNumber == 1) {
+            laptopModel = LaptopModel.HP;
+            modelCost = HPCost;
+        } else if (modelNumber == 2) {
+            laptopModel = LaptopModel.DELL;
+            modelCost = DellCost;
+        } else if (modelNumber == 3) {
+            laptopModel = LaptopModel.MAC;
+            modelCost = MacCost;
+        } else {
+            laptopModel = LaptopModel.ASUS;
+            modelCost = AsusCost;
+        }
+
+        // Check if the user has sufficient funds for the laptop redemption
+        require(balanceOf(msg.sender) >= modelCost, "Insufficient funds for laptop redemption");
+
+        // Burn the tokens to redeem the laptop
+        _burn(msg.sender, modelCost);
+
+        // Update the user's laptop subscription
+        userLaptops[msg.sender] = laptopModel;
+
+        // Emit the redemption event
+        emit SubscriptionRedeemed(msg.sender, laptopModel, modelCost);
+    }
+
+    // Modify the user's laptop model
+    function modifyLaptopModel(uint8 newModelNumber) external {
+        require(newModelNumber >= 1 && newModelNumber <= 4, "Invalid model number");
+
+        LaptopModel newModel;
+
+        // Determine the new laptop model based on the model number
+        if (newModelNumber == 1) {
+            newModel = LaptopModel.HP;
+        } else if (newModelNumber == 2) {
+            newModel = LaptopModel.DELL;
+        } else if (newModelNumber == 3) {
+            newModel = LaptopModel.MAC;
+        } else {
+            newModel = LaptopModel.ASUS;
+        }
+
+        // Update the user's laptop subscription
+        userLaptops[msg.sender] = newModel;
+
+        // Emit the modification event
+        emit LaptopModelModified(msg.sender, newModel);
+    }
+}
